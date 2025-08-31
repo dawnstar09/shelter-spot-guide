@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Header from "@/components/Layout/Header";
 import MapView from "@/components/Map/MapView";
 import ShelterCard from "@/components/Shelter/ShelterCard";
-import { mockShelters, getSheltersByDistance } from "@/data/mockShelters";
+import { realShelters, getSheltersByDistance } from "@/data/realShelters";
 import type { Shelter } from "@/components/Shelter/ShelterCard";
 
 /**
@@ -23,7 +23,7 @@ export default function Home() {
   const [showList, setShowList] = useState(false);
 
   // 사용자 선호도에 따라 쉼터 필터링 및 정렬
-  const filteredShelters = mockShelters.filter(shelter =>
+  const filteredShelters = realShelters.filter(shelter =>
     shelter.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     shelter.address.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -158,20 +158,20 @@ export default function Home() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center p-3 bg-success-light rounded-lg">
                     <div className="text-2xl font-bold text-success">
-                      {mockShelters.filter(s => s.congestion === "low").length}
+                      {realShelters.filter(s => s.congestion === "low").length}
                     </div>
                     <div className="text-sm text-muted-foreground font-paperlogy-light">여유</div>
                   </div>
                   <div className="text-center p-3 bg-warning-light rounded-lg">
                     <div className="text-2xl font-bold text-warning">
-                      {mockShelters.filter(s => s.congestion === "medium").length}
+                      {realShelters.filter(s => s.congestion === "medium").length}
                     </div>
                     <div className="text-sm text-muted-foreground font-paperlogy-light">보통</div>
                   </div>
                 </div>
                 <div className="text-center p-3 bg-destructive-light rounded-lg">
                   <div className="text-2xl font-bold text-destructive">
-                    {mockShelters.filter(s => s.congestion === "high").length}
+                    {realShelters.filter(s => s.congestion === "high").length}
                   </div>
                   <div className="text-sm text-muted-foreground font-paperlogy-light">혼잡</div>
                 </div>

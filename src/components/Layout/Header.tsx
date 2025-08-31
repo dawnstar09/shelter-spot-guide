@@ -50,7 +50,7 @@ const Header = () => {
           >
             <Link href="/about">소개</Link>
           </Button>
-          
+
           {/* 사용자 메뉴 */}
           <Button variant="ghost" size="sm" className="ml-2">
             <User className="w-4 h-4" />

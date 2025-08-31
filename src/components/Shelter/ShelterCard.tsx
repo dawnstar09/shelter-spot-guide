@@ -30,6 +30,11 @@ export interface Shelter {
     lat: number;
     lng: number;
   };
+  use_prnb: number;
+  r_area_sqr: string;
+  rmrk: string | null;
+  facility_type1: string;
+  facility_type2: string;
 }
 
 /**

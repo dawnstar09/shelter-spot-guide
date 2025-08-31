@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import Header from "@/components/Layout/Header";
-import { getShelterById } from "@/data/mockShelters";
+import { getShelterById } from "@/data/realShelters";
 
 /**
  * 쉼터 상세 페이지 컴포넌트
@@ -167,39 +167,20 @@ const ShelterDetailPage = () => {
                 <CardTitle>이용 가능한 시설</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className={`p-4 rounded-lg text-center ${
-                    shelter.facilities.wifi ? 'bg-accent-light' : 'bg-muted opacity-50'
-                  }`}>
-                    <Wifi className={`w-8 h-8 mx-auto mb-2 ${
-                      shelter.facilities.wifi ? 'text-accent' : 'text-muted-foreground'
-                    }`} />
-                    <div className="font-medium text-sm">Wi-Fi</div>
-                  </div>
-                  <div className={`p-4 rounded-lg text-center ${
-                    shelter.facilities.showers ? 'bg-accent-light' : 'bg-muted opacity-50'
-                  }`}>
-                    <Bath className={`w-8 h-8 mx-auto mb-2 ${
-                      shelter.facilities.showers ? 'text-accent' : 'text-muted-foreground'
-                    }`} />
-                    <div className="font-medium text-sm">샤워실</div>
-                  </div>
-                  <div className={`p-4 rounded-lg text-center ${
-                    shelter.facilities.beds ? 'bg-accent-light' : 'bg-muted opacity-50'
-                  }`}>
-                    <Bed className={`w-8 h-8 mx-auto mb-2 ${
-                      shelter.facilities.beds ? 'text-accent' : 'text-muted-foreground'
-                    }`} />
-                    <div className="font-medium text-sm">침대</div>
-                  </div>
-                  <div className={`p-4 rounded-lg text-center ${
-                    shelter.facilities.firstAid ? 'bg-accent-light' : 'bg-muted opacity-50'
-                  }`}>
-                    <Heart className={`w-8 h-8 mx-auto mb-2 ${
-                      shelter.facilities.firstAid ? 'text-accent' : 'text-muted-foreground'
-                    }`} />
-                    <div className="font-medium text-sm">응급처치</div>
-                  </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {['회원이용시설', '공공청사', '공공시설', '특정계층이용시설', '복지·문화·체육시설'].map(facility => {
+                    const isAvailable = shelter.facility_type1 === facility || shelter.facility_type2 === facility;
+                    return (
+                      <div
+                        key={facility}
+                        className={`p-4 rounded-lg text-center ${
+                          isAvailable ? 'bg-accent text-accent-foreground' : 'bg-muted opacity-50'
+                        }`}
+                      >
+                        <div className="font-medium text-sm">{facility}</div>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -231,32 +212,6 @@ const ShelterDetailPage = () => {
               </CardContent>
             </Card>
 
-            {/* NFC 태그 섹션 */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <NfcIcon className="w-5 h-5 text-primary" />
-                  <span>NFC 체크인</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground font-paperlogy-light">
-                  NFC를 사용하여 빠르게 체크인하고 실시간 혼잡도 업데이트에 도움을 주세요.
-                </p>
-                <div className="space-y-2">
-                  <Button className="w-full">
-                    NFC 태그 등록
-                  </Button>
-                  <Button variant="outline" className="w-full">
-                    지금 체크인
-                  </Button>
-                </div>
-                <div className="text-xs text-center text-muted-foreground font-paperlogy-light">
-                  쉼터 입구의 NFC 태그에 휴대폰을 가까이 대주세요
-                </div>
-              </CardContent>
-            </Card>
-
             {/* 빠른 작업 */}
             <Card>
               <CardHeader>
@@ -283,17 +238,19 @@ const ShelterDetailPage = () => {
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div>
-                  <span className="font-medium">접근성:</span>
-                  <span className="text-muted-foreground ml-2 font-paperlogy-light">휠체어 접근 가능</span>
+                  <span className="font-medium">이용 가능 인원:</span>
+                  <span className="text-muted-foreground ml-2 font-paperlogy-light">{shelter.use_prnb}명</span>
                 </div>
                 <div>
-                  <span className="font-medium">주차:</span>
-                  <span className="text-muted-foreground ml-2 font-paperlogy-light">길가 주차 가능</span>
+                  <span className="font-medium">시설 면적:</span>
+                  <span className="text-muted-foreground ml-2 font-paperlogy-light">{shelter.r_area_sqr}㎡</span>
                 </div>
-                <div>
-                  <span className="font-medium">연락처:</span>
-                  <span className="text-muted-foreground ml-2 font-paperlogy-light">02-1234-5678</span>
-                </div>
+                {shelter.rmrk && (
+                  <div>
+                    <span className="font-medium">비고:</span>
+                    <span className="text-muted-foreground ml-2 font-paperlogy-light">{shelter.rmrk}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

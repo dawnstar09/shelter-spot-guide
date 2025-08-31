@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Header from "@/components/Layout/Header";
 import ShelterCard from "@/components/Shelter/ShelterCard";
 import MapView from "@/components/Map/MapView";
-import { mockShelters } from "@/data/mockShelters";
+import { realShelters } from "@/data/realShelters";
 import type { Shelter } from "@/components/Shelter/ShelterCard";
 
 /**
@@ -25,7 +25,7 @@ export default function Shelters() {
   const [selectedShelter, setSelectedShelter] = useState<Shelter | null>(null);
 
   // 검색어와 혼잡도 필터를 기반으로 쉼터 필터링
-  const filteredShelters = mockShelters.filter(shelter => {
+  const filteredShelters = realShelters.filter(shelter => {
     const matchesSearch = shelter.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          shelter.address.toLowerCase().includes(searchQuery.toLowerCase());
     
