@@ -38,14 +38,31 @@ git clone https://github.com/dawnstar09/shelter-spot-guide.git
 # 2단계: 프로젝트 디렉토리로 이동
 cd shelter-spot-guide
 
-# 3단계: 의존성 설치
+# 3단계: 환경 변수 설정
+cp .env.example .env.local
+# .env.local 파일을 편집하여 실제 API 키를 입력하세요
+
+# 4단계: 의존성 설치
 npm install
 
-# 4단계: 개발 서버 시작
+# 5단계: 개발 서버 시작
 npm run dev
 ```
 
 개발 서버가 [http://localhost:3000](http://localhost:3000)에서 실행됩니다.
+
+## 환경 변수 설정
+
+프로젝트를 실행하기 전에 환경 변수를 설정해야 합니다:
+
+1. `.env.example` 파일을 `.env.local`로 복사합니다
+2. TMAP API 키를 발급받아 설정합니다:
+   - [SK 오픈 API](https://openapi.sk.com/)에서 회원가입
+   - TMAP API 서비스 신청
+   - 발급받은 API 키를 `.env.local`의 `NEXT_PUBLIC_TMAP_API_KEY`에 입력
+
+필수 환경 변수:
+- `NEXT_PUBLIC_TMAP_API_KEY`: TMAP API 키 (지도 표시를 위해 필요)
 
 ## 스크립트
 

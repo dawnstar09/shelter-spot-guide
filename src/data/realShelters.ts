@@ -5,8 +5,6 @@ import rawData from '../muduwi.json';
 // The raw data is a JSON object with a single key "DATA" which is an array of shelters.
 const shelterData = rawData.DATA;
 
-const congestionLevels: Array<"low" | "medium" | "high"> = ["low", "medium", "high"];
-
 export const realShelters: Shelter[] = shelterData.map((shelter, index) => {
   const distanceInKm = ((index % 50) / 10).toFixed(1); // Deterministic distance
   const waitTimeMinutes = (index % 10) * 3; // Deterministic wait time
@@ -17,7 +15,6 @@ export const realShelters: Shelter[] = shelterData.map((shelter, index) => {
     address: shelter.r_detl_add || shelter.lotno_addr,
     distance: `${distanceInKm} km`,
     operatingHours: "오전 9시 - 오후 6시", // Default value
-    congestion: congestionLevels[index % congestionLevels.length],
     waitTime: `${waitTimeMinutes}분`,
     facilities: {
       wifi: false, // Assuming no wifi info from data

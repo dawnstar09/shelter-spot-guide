@@ -8,6 +8,7 @@
   src: url('/fonts/Paperlogy-7Bold.ttf') format('truetype');
   font-weight: 700;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
@@ -15,6 +16,7 @@
   src: url('/fonts/Paperlogy-2ExtraLight.ttf') format('truetype');
   font-weight: 200;
   font-style: normal;
+  font-display: swap;
 }
 
 /* 디자인 시스템 정의. 모든 색상, 그라데이션, 폰트 등은 여기서 정의해야 합니다. 

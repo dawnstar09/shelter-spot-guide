@@ -1,13 +1,11 @@
-import { MapPin, Clock, Wifi, Bath, Bed, Heart, Navigation } from "lucide-react";
+import { MapPin, Clock, Wifi, Bath, Bed, Heart, Navigation, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CrowdingLevel, CROWDING_LEVELS } from "@/types/crowding";
+import { crowdingManager } from "@/utils/crowdingManager";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-
-/**
- * 혼잡도 레벨 타입 정의
- */
-export type CongestionLevel = "low" | "medium" | "high";
 
 /**
  * 쉼터 데이터 인터페이스
@@ -18,7 +16,6 @@ export interface Shelter {
   address: string;
   distance: string;
   operatingHours: string;
-  congestion: CongestionLevel;
   waitTime: string;
   facilities: {
     wifi: boolean;
@@ -43,46 +40,53 @@ export interface Shelter {
 interface ShelterCardProps {
   shelter: Shelter;
   showMap?: boolean;
+  onClick?: () => void;
 }
-
-/**
- * 혼잡도 레벨에 따른 색상과 텍스트 반환
- */
-const getCongestionInfo = (level: CongestionLevel) => {
-  switch (level) {
-    case "low":
-      return {
-        variant: "success" as const,
-        text: "여유",
-        color: "text-success-foreground",
-        bgColor: "bg-success"
-      };
-    case "medium":
-      return {
-        variant: "warning" as const,
-        text: "보통",
-        color: "text-warning-foreground",
-        bgColor: "bg-warning"
-      };
-    case "high":
-      return {
-        variant: "destructive" as const,
-        text: "혼잡",
-        color: "text-destructive-foreground",
-        bgColor: "bg-destructive"
-      };
-  }
-};
 
 /**
  * ShelterCard 컴포넌트 - 카드 형태로 쉼터 정보를 표시합니다
  * 쉼터 목록과 추천에서 사용됩니다
  */
-const ShelterCard = ({ shelter, showMap = false }: ShelterCardProps) => {
-  const congestionInfo = getCongestionInfo(shelter.congestion);
+const ShelterCard = ({ shelter, showMap = false, onClick }: ShelterCardProps) => {
+  const [crowdingLevel, setCrowdingLevel] = useState<CrowdingLevel>("여유");
+  const [hourlyClicks, setHourlyClicks] = useState(0);
+
+  // 혼잡도 정보 로드
+  useEffect(() => {
+    const crowdingData = crowdingManager.getCrowdingData(shelter.id);
+    setCrowdingLevel(crowdingData.level);
+    setHourlyClicks(crowdingData.hourlyClicks);
+  }, [shelter.id]);
+
+  // 카드 클릭 핸들러
+  const handleCardClick = () => {
+    // 클릭 데이터 기록
+    crowdingManager.recordClick(shelter.id);
+    
+    // 혼잡도 정보 업데이트
+    const updatedData = crowdingManager.getCrowdingData(shelter.id);
+    setCrowdingLevel(updatedData.level);
+    setHourlyClicks(updatedData.hourlyClicks);
+    
+    // 부모 컴포넌트의 onClick 호출
+    if (onClick) {
+      onClick();
+    }
+  };
+
+  // 혼잡도 정보 가져오기 (안전한 fallback 포함)
+  const crowdingInfo = CROWDING_LEVELS?.[crowdingLevel] || {
+    level: "여유",
+    color: "text-green-600",
+    bgColor: "bg-green-100",
+    description: "여유로운 상태"
+  };
 
   return (
-    <Card className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-primary">
+    <Card 
+      className={`hover:shadow-lg transition-all duration-300 border-l-4 border-l-primary ${onClick ? 'cursor-pointer' : ''}`}
+      onClick={handleCardClick}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
@@ -107,10 +111,14 @@ const ShelterCard = ({ shelter, showMap = false }: ShelterCardProps) => {
           
           {/* 혼잡도 상태 */}
           <div className="text-right">
-            <Badge variant={congestionInfo.variant} className="mb-2">
-              {congestionInfo.text}
-            </Badge>
+            <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mb-2 ${crowdingInfo.bgColor} ${crowdingInfo.color}`}>
+              <Users className="w-3 h-3 mr-1" />
+              {crowdingInfo.level}
+            </div>
             <div className="text-xs text-muted-foreground font-paperlogy-light">
+              1시간: {hourlyClicks}회 클릭
+            </div>
+            <div className="text-xs text-muted-foreground font-paperlogy-light mt-1">
               대기시간: {shelter.waitTime}
             </div>
           </div>

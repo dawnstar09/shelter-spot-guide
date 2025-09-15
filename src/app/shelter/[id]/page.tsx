@@ -1,8 +1,9 @@
 'use client';
 
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, MapPin, Clock, Wifi, Bath, Bed, Heart, Navigation, Phone, NfcIcon } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, Wifi, Bath, Bed, Heart, Navigation, Phone, NfcIcon, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,8 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import Header from "@/components/Layout/Header";
 import { getShelterById } from "@/data/realShelters";
+import { crowdingManager } from "@/utils/crowdingManager";
+import { CrowdingLevel, CROWDING_LEVELS } from "@/types/crowding";
 
 /**
  * 쉼터 상세 페이지 컴포넌트
@@ -20,6 +23,20 @@ const ShelterDetailPage = () => {
   const params = useParams();
   const id = params?.id as string;
   const shelter = id ? getShelterById(id) : null;
+  const [crowdingLevel, setCrowdingLevel] = useState<CrowdingLevel>("여유");
+  const [hourlyClicks, setHourlyClicks] = useState(0);
+
+  // 혼잡도 정보 로드
+  useEffect(() => {
+    if (shelter) {
+      // 페이지 접근 시 클릭 기록
+      crowdingManager.recordClick(shelter.id);
+      
+      const crowdingData = crowdingManager.getCrowdingData(shelter.id);
+      setCrowdingLevel(crowdingData.level);
+      setHourlyClicks(crowdingData.hourlyClicks);
+    }
+  }, [shelter]);
 
   if (!shelter) {
     return (
@@ -38,33 +55,17 @@ const ShelterDetailPage = () => {
     );
   }
 
-  // 프로그레스 바를 위한 혼잡도 퍼센트 계산
-  const getCongestionPercentage = (level: string) => {
+  // 혼잡도 퍼센트 계산 (새로운 시스템)
+  const getCongestionPercentage = (level: CrowdingLevel) => {
     switch (level) {
-      case "low": return 25;
-      case "medium": return 65;
-      case "high": return 90;
+      case "여유": return 25;
+      case "보통": return 65;
+      case "혼잡": return 90;
       default: return 0;
     }
   };
 
-  const getCongestionColor = (level: string) => {
-    switch (level) {
-      case "low": return "bg-success";
-      case "medium": return "bg-warning";
-      case "high": return "bg-destructive";
-      default: return "bg-primary";
-    }
-  };
-
-  const getCongestionVariant = (level: string) => {
-    switch (level) {
-      case "low": return "success" as const;
-      case "medium": return "warning" as const;
-      case "high": return "destructive" as const;
-      default: return "default" as const;
-    }
-  };
+  const crowdingInfo = CROWDING_LEVELS[crowdingLevel];
 
   return (
     <div className="min-h-screen bg-background">
@@ -105,9 +106,10 @@ const ShelterDetailPage = () => {
                       </div>
                     </div>
                   </div>
-                  <Badge variant={getCongestionVariant(shelter.congestion)} className="text-sm">
-                    {shelter.congestion === "low" ? "여유" : shelter.congestion === "medium" ? "보통" : "혼잡"}
-                  </Badge>
+                  <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${crowdingInfo.bgColor} ${crowdingInfo.color}`}>
+                    <Users className="w-4 h-4 mr-1" />
+                    {crowdingInfo.level} ({hourlyClicks}회/시간)
+                  </div>
                 </div>
               </CardHeader>
             </Card>
@@ -196,18 +198,21 @@ const ShelterDetailPage = () => {
               <CardContent className="space-y-4">
                 <div className="text-center">
                   <div className="text-3xl font-bold mb-2">
-                    {shelter.congestion === "low" ? "여유" : shelter.congestion === "medium" ? "보통" : "혼잡"}
+                    {crowdingLevel}
+                  </div>
+                  <div className="text-sm text-muted-foreground mb-2 font-paperlogy-light">
+                    1시간 클릭 수: {hourlyClicks}회
                   </div>
                   <div className="text-sm text-muted-foreground mb-4 font-paperlogy-light">
                     예상 대기시간: {shelter.waitTime}
                   </div>
                 </div>
                 <Progress 
-                  value={getCongestionPercentage(shelter.congestion)} 
+                  value={getCongestionPercentage(crowdingLevel)} 
                   className="h-3"
                 />
                 <div className="text-xs text-muted-foreground text-center font-paperlogy-light">
-                  5분 전 업데이트됨
+                  실시간 업데이트됨
                 </div>
               </CardContent>
             </Card>
