@@ -15,7 +15,7 @@ declare global {
 }
 
 interface MapViewProps {
-  shelters: (Shelter & { distance?: string; distanceValue?: number })[];
+  shelters: any[];
   selectedShelterId?: string | null;
   onShelterSelect: Dispatch<SetStateAction<Shelter | null>>;
   onUserLocationChange?: (location: UserLocation | null) => void;

@@ -15,9 +15,29 @@ import { CrowdingLevel, CROWDING_LEVELS } from "@/types/crowding";
 import type { Shelter } from "@/components/Shelter/ShelterCard";
 
 // 거리 정보가 추가된 쉼터 타입
-interface ShelterWithDistance extends Shelter {
+interface ShelterWithDistance {
+  id: string;
+  name: string;
+  address: string;
   distance?: string;
   distanceValue?: number;
+  operatingHours: string;
+  waitTime: string;
+  facilities: {
+    wifi: boolean;
+    showers: boolean;
+    beds: boolean;
+    firstAid: boolean;
+  };
+  coordinates: {
+    lat: number;
+    lng: number;
+  };
+  use_prnb: number;
+  r_area_sqr: string;
+  rmrk: string | null;
+  facility_type1: string;
+  facility_type2: string;
 }
 
 export default function Home() {
@@ -26,7 +46,13 @@ export default function Home() {
   const [filterBy, setFilterBy] = useState("all");
   const [selectedShelter, setSelectedShelter] = useState<Shelter | null>(null);
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
-  const [sheltersWithDistance, setSheltersWithDistance] = useState<ShelterWithDistance[]>(realShelters);
+  const [sheltersWithDistance, setSheltersWithDistance] = useState<ShelterWithDistance[]>(
+    realShelters.map(shelter => ({
+      ...shelter,
+      distance: undefined,
+      distanceValue: undefined
+    }))
+  );
   const [isClient, setIsClient] = useState(false);
   const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [enableRouting, setEnableRouting] = useState(false);
@@ -178,18 +204,18 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
         {/* 헤더 */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-4">🏠 무더위 쉼터 찾기</h1>
-          <p className="text-muted-foreground font-paperlogy-light max-w-2xl mx-auto">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-4">🏠 무더위 쉼터 찾기</h1>
+          <p className="text-sm sm:text-base text-muted-foreground font-paperlogy-light max-w-2xl mx-auto px-4">
             실시간 혼잡도와 정확한 거리 정보를 확인하여 가장 적합한 쉼터를 찾으세요
           </p>
           
           {/* 위치 상태 표시 */}
-          <div className="mt-4">
+          <div className="mt-3 sm:mt-4 px-4">
             {locationStatus === 'loading' && (
-              <div className="text-sm text-yellow-600 font-paperlogy-light">
+              <div className="text-xs sm:text-sm text-yellow-600 font-paperlogy-light">
                 📍 현재 위치를 확인하는 중... 
                 <br />
                 <span className="text-xs text-gray-500">
@@ -198,12 +224,12 @@ export default function Home() {
               </div>
             )}
             {locationStatus === 'success' && userLocation && (
-              <div className="text-sm text-green-600 font-paperlogy-light">
+              <div className="text-xs sm:text-sm text-green-600 font-paperlogy-light">
                 ✅ 현재 위치 기준 실제 거리 표시 중 (정확도: 높음)
               </div>
             )}
             {locationStatus === 'error' && (
-              <div className="text-sm text-orange-600 font-paperlogy-light">
+              <div className="text-xs sm:text-sm text-orange-600 font-paperlogy-light">
                 ⚠️ 위치 접근이 차단되었습니다. 기본 위치(서울시청) 기준으로 거리 표시 중
                 <br />
                 <span className="text-xs text-gray-500">
@@ -217,7 +243,7 @@ export default function Home() {
         {/* 검색 및 필터 */}
         <Card className="mb-6">
           <CardContent className="pt-6">
-            <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex flex-col space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4">
               {/* 검색 */}
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -229,81 +255,83 @@ export default function Home() {
                 />
               </div>
 
-              {/* 정렬 */}
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-full lg:w-48">
-                  <SlidersHorizontal className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="정렬" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="distance">📍 거리순 정렬</SelectItem>
-                  <SelectItem value="congestion">👥 혼잡도순 정렬</SelectItem>
-                  <SelectItem value="name">📝 이름순 정렬</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4 lg:w-auto">
+                {/* 정렬 */}
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SlidersHorizontal className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder="정렬" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="distance">📍 거리순 정렬</SelectItem>
+                    <SelectItem value="congestion">👥 혼잡도순 정렬</SelectItem>
+                    <SelectItem value="name">📝 이름순 정렬</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              {/* 혼잡도 필터 */}
-              <Select value={filterBy} onValueChange={setFilterBy}>
-                <SelectTrigger className="w-full lg:w-48">
-                  <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="필터" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">전체 보기</SelectItem>
-                  <SelectItem value="여유">😌 여유</SelectItem>
-                  <SelectItem value="보통">😐 보통</SelectItem>
-                  <SelectItem value="혼잡">😰 혼잡</SelectItem>
-                </SelectContent>
-              </Select>
+                {/* 혼잡도 필터 */}
+                <Select value={filterBy} onValueChange={setFilterBy}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <Filter className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder="필터" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">전체 보기</SelectItem>
+                    <SelectItem value="여유">😌 여유</SelectItem>
+                    <SelectItem value="보통">😐 보통</SelectItem>
+                    <SelectItem value="혼잡">😰 혼잡</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>
 
         {/* 결과 요약 */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="text-muted-foreground font-paperlogy-light">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2 sm:gap-4">
+          <div className="text-sm sm:text-base text-muted-foreground font-paperlogy-light">
             <span className="font-medium text-primary">{sortedShelters.length}개</span>의 쉼터를 찾았습니다
             {searchQuery && (
-              <span className="ml-2 text-sm">
+              <span className="block sm:inline sm:ml-2 text-xs sm:text-sm">
                 ("<span className="font-medium">{searchQuery}</span>" 검색 결과)
               </span>
             )}
           </div>
           
           {sortedShelters.length > 0 && (
-            <div className="text-sm text-green-600 font-paperlogy-light">
+            <div className="text-xs sm:text-sm text-green-600 font-paperlogy-light">
               🎯 가장 가까운 쉼터: <span className="font-medium">{sortedShelters[0].distance}</span>
             </div>
           )}
         </div>
 
         {/* 탭 */}
-        <Tabs defaultValue="list" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="list">📋 목록</TabsTrigger>
-            <TabsTrigger value="map">🗺️ 지도</TabsTrigger>
+        <Tabs defaultValue="list" className="space-y-4 sm:space-y-6">
+          <TabsList className="grid w-full grid-cols-2 h-10 sm:h-11">
+            <TabsTrigger value="list" className="text-sm sm:text-base">📋 목록</TabsTrigger>
+            <TabsTrigger value="map" className="text-sm sm:text-base">🗺️ 지도</TabsTrigger>
           </TabsList>
 
           {/* 목록 탭 */}
           <TabsContent value="list" className="space-y-4">
             {sortedShelters.length === 0 ? (
               <Card>
-                <CardContent className="text-center py-12">
-                  <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">검색 결과가 없습니다</h3>
-                  <p className="text-muted-foreground font-paperlogy-light">
+                <CardContent className="text-center py-8 sm:py-12">
+                  <MapPin className="w-8 h-8 sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-3 sm:mb-4" />
+                  <h3 className="text-base sm:text-lg font-medium mb-2">검색 결과가 없습니다</h3>
+                  <p className="text-sm sm:text-base text-muted-foreground font-paperlogy-light">
                     다른 검색어나 필터를 시도해보세요
                   </p>
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 {sortedShelters.map((shelter, index) => (
                   <div key={shelter.id} className="relative">
                     {/* 순위 배지 (거리순 정렬일 때만) */}
                     {sortBy === "distance" && index < 3 && (
                       <div className="absolute -top-2 -left-2 z-10">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg ${
+                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg ${
                           index === 0 ? 'bg-yellow-500' : 
                           index === 1 ? 'bg-gray-400' : 
                           'bg-orange-400'
@@ -313,8 +341,8 @@ export default function Home() {
                       </div>
                     )}
                     <ShelterCard
-                      shelter={shelter}
-                      onClick={() => setSelectedShelter(shelter)}
+                      shelter={shelter as unknown as Shelter}
+                      onClick={() => setSelectedShelter(shelter as unknown as Shelter)}
                     />
                   </div>
                 ))}
@@ -326,31 +354,32 @@ export default function Home() {
           <TabsContent value="map">
             <Card>
               <CardContent className="p-0">
-                <div className="flex h-[600px]">
+                {/* 모바일: 세로 배치, 데스크톱: 가로 배치 */}
+                <div className="flex flex-col lg:flex-row h-[400px] sm:h-[500px] lg:h-[600px]">
                   {/* 지도 영역 */}
-                  <div className="flex-1">
+                  <div className="flex-1 order-2 lg:order-1 h-[250px] sm:h-[300px] lg:h-full">
                     <MapView
                       shelters={sortedShelters}
                       selectedShelterId={selectedShelter?.id}
                       onShelterSelect={setSelectedShelter}
                       onUserLocationChange={setUserLocation}
-                      className="rounded-l-lg"
+                      className="rounded-none lg:rounded-l-lg"
                       enableRouting={enableRouting}
                     />
                   </div>
                   
                   {/* 가까운 쉼터 목록 */}
-                  <div className="w-80 bg-gray-50 rounded-r-lg overflow-y-auto">
-                    <div className="p-4 border-b bg-white">
-                      <h3 className="font-bold text-lg flex items-center gap-2">
+                  <div className="w-full lg:w-80 bg-gray-50 rounded-none lg:rounded-r-lg overflow-y-auto order-1 lg:order-2 h-[150px] sm:h-[200px] lg:h-full">
+                    <div className="p-3 lg:p-4 border-b bg-white">
+                      <h3 className="font-bold text-base lg:text-lg flex items-center gap-2">
                         📍 가까운 쉼터 TOP 3
                       </h3>
-                      <p className="text-sm text-muted-foreground font-paperlogy-light">
+                      <p className="text-xs lg:text-sm text-muted-foreground font-paperlogy-light">
                         클릭하면 지도에서 위치를 확인할 수 있습니다
                       </p>
                     </div>
                     
-                    <div className="p-4 space-y-3">
+                    <div className="p-2 lg:p-4 space-y-2 lg:space-y-3">
                       {sortedShelters.slice(0, 3).map((shelter, index) => {
                         const crowdingData = isClient ? crowdingManager.getCrowdingData(shelter.id) : { level: "여유" as CrowdingLevel, count: 0 };
                         const isSelected = selectedShelter?.id === shelter.id;
@@ -358,16 +387,16 @@ export default function Home() {
                         return (
                           <div
                             key={shelter.id}
-                            onClick={() => setSelectedShelter(shelter as Shelter)}
-                            className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
+                            onClick={() => setSelectedShelter(shelter as unknown as Shelter)}
+                            className={`p-2 lg:p-3 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
                               isSelected 
                                 ? 'border-blue-500 bg-blue-50 shadow-md' 
                                 : 'border-gray-200 bg-white hover:border-gray-300'
                             }`}
                           >
                             {/* 순위 배지 */}
-                            <div className="flex items-start gap-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm ${
+                            <div className="flex items-start gap-2 lg:gap-3">
+                              <div className={`w-6 h-6 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm ${
                                 index === 0 ? 'bg-yellow-500' : 
                                 index === 1 ? 'bg-gray-400' : 
                                 'bg-orange-400'
@@ -376,13 +405,13 @@ export default function Home() {
                               </div>
                               
                               <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-sm truncate">{shelter.name}</h4>
+                                <h4 className="font-medium text-xs lg:text-sm truncate">{shelter.name}</h4>
                                 <p className="text-xs text-muted-foreground truncate">{shelter.address}</p>
                                 
-                                <div className="flex items-center justify-between mt-2">
+                                <div className="flex items-center justify-between mt-1 lg:mt-2">
                                   {/* 거리 */}
                                   <div className="flex items-center gap-1">
-                                    <MapPin className="w-3 h-3 text-blue-500" />
+                                    <MapPin className="w-2.5 h-2.5 lg:w-3 lg:h-3 text-blue-500" />
                                     <span className="text-xs font-medium text-blue-600">
                                       {shelter.distance || '계산 중...'}
                                     </span>
@@ -391,7 +420,7 @@ export default function Home() {
                                   {/* 혼잡도 */}
                                   <div className="flex items-center gap-1">
                                     <div 
-                                      className={`w-2 h-2 rounded-full ${
+                                      className={`w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full ${
                                         crowdingData.level === "여유" ? "bg-green-500" :
                                         crowdingData.level === "보통" ? "bg-yellow-500" :
                                         "bg-red-500"
@@ -406,11 +435,11 @@ export default function Home() {
                                 </div>
                                 
                                 {/* 길찾기 버튼 */}
-                                <div className="mt-3 pt-2 border-t border-gray-200">
+                                <div className="mt-2 pt-1 lg:pt-2 border-t border-gray-200">
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setSelectedShelter(shelter as Shelter);
+                                      setSelectedShelter(shelter as unknown as Shelter);
                                       setEnableRouting(true);
                                     }}
                                     className="w-full text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-md transition-colors duration-200 flex items-center justify-center gap-1"
@@ -425,9 +454,9 @@ export default function Home() {
                       })}
                       
                       {sortedShelters.length === 0 && (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <MapPin className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">쉼터를 찾는 중...</p>
+                        <div className="text-center py-4 lg:py-8 text-muted-foreground">
+                          <MapPin className="w-6 h-6 lg:w-8 lg:h-8 mx-auto mb-2 opacity-50" />
+                          <p className="text-xs lg:text-sm">쉼터를 찾는 중...</p>
                         </div>
                       )}
                     </div>
