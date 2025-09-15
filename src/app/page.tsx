@@ -29,6 +29,7 @@ export default function Home() {
   const [sheltersWithDistance, setSheltersWithDistance] = useState<ShelterWithDistance[]>(realShelters);
   const [isClient, setIsClient] = useState(false);
   const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [enableRouting, setEnableRouting] = useState(false);
 
   // 클라이언트 사이드인지 확인
   useEffect(() => {
@@ -127,6 +128,17 @@ export default function Home() {
     }
   }, [userLocation]);
 
+  // 길찾기 실행 후 enableRouting 리셋
+  useEffect(() => {
+    if (enableRouting) {
+      const timer = setTimeout(() => {
+        setEnableRouting(false);
+      }, 1000); // 1초 후 리셋
+      
+      return () => clearTimeout(timer);
+    }
+  }, [enableRouting]);
+
   // 검색어와 혼잡도 필터를 기반으로 쉼터 필터링
   const filteredShelters = sheltersWithDistance.filter(shelter => {
     const matchesSearch = shelter.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -178,7 +190,11 @@ export default function Home() {
           <div className="mt-4">
             {locationStatus === 'loading' && (
               <div className="text-sm text-yellow-600 font-paperlogy-light">
-                📍 현재 위치를 확인하는 중...
+                📍 현재 위치를 확인하는 중... 
+                <br />
+                <span className="text-xs text-gray-500">
+                  브라우저에서 위치 접근 허용을 눌러주세요
+                </span>
               </div>
             )}
             {locationStatus === 'success' && userLocation && (
@@ -188,7 +204,11 @@ export default function Home() {
             )}
             {locationStatus === 'error' && (
               <div className="text-sm text-orange-600 font-paperlogy-light">
-                ⚠️ 기본 위치(서울시청) 기준으로 거리 표시 중
+                ⚠️ 위치 접근이 차단되었습니다. 기본 위치(서울시청) 기준으로 거리 표시 중
+                <br />
+                <span className="text-xs text-gray-500">
+                  정확한 거리를 보려면 브라우저 주소창 옆 🔒 아이콘 → 위치 → 허용
+                </span>
               </div>
             )}
           </div>
@@ -315,6 +335,7 @@ export default function Home() {
                       onShelterSelect={setSelectedShelter}
                       onUserLocationChange={setUserLocation}
                       className="rounded-l-lg"
+                      enableRouting={enableRouting}
                     />
                   </div>
                   
@@ -382,6 +403,20 @@ export default function Home() {
                                        "😰"} {crowdingData.level}
                                     </span>
                                   </div>
+                                </div>
+                                
+                                {/* 길찾기 버튼 */}
+                                <div className="mt-3 pt-2 border-t border-gray-200">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedShelter(shelter as Shelter);
+                                      setEnableRouting(true);
+                                    }}
+                                    className="w-full text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-md transition-colors duration-200 flex items-center justify-center gap-1"
+                                  >
+                                    🧭 길찾기
+                                  </button>
                                 </div>
                               </div>
                             </div>

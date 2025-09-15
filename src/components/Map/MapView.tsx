@@ -20,6 +20,7 @@ interface MapViewProps {
   onShelterSelect: Dispatch<SetStateAction<Shelter | null>>;
   onUserLocationChange?: (location: UserLocation | null) => void;
   className?: string;
+  enableRouting?: boolean;
 }
 
 interface UserLocation {
@@ -27,7 +28,7 @@ interface UserLocation {
   lng: number;
 }
 
-const MapView = ({ shelters, selectedShelterId, onShelterSelect, onUserLocationChange, className }: MapViewProps) => {
+const MapView = ({ shelters, selectedShelterId, onShelterSelect, onUserLocationChange, className, enableRouting = false }: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
@@ -130,6 +131,17 @@ const MapView = ({ shelters, selectedShelterId, onShelterSelect, onUserLocationC
     );
   };
 
+  // enableRouting prop에 따른 자동 길찾기 실행
+  useEffect(() => {
+    if (enableRouting && selectedShelterId && userLocation) {
+      const selectedShelter = shelters.find(s => s.id === selectedShelterId);
+      if (selectedShelter) {
+        setIsRoutingMode(true);
+        findRoute(selectedShelter);
+      }
+    }
+  }, [enableRouting, selectedShelterId, userLocation, shelters]);
+
   // 길찾기 기능 - 고급 TMAP API 사용
   const findRoute = async (targetShelter: Shelter) => {
     console.log("🎯 길찾기 함수 호출됨!", targetShelter.name);
@@ -147,21 +159,52 @@ const MapView = ({ shelters, selectedShelterId, onShelterSelect, onUserLocationC
     try {
       console.log("길찾기 시작:", userLocation, "->", targetShelter.coordinates);
       
+      // 좌표값 유효성 검사
+      const isValidCoord = (lat: number, lng: number) => {
+        return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+      };
+      
+      if (!isValidCoord(userLocation.lat, userLocation.lng)) {
+        throw new Error(`출발지 좌표가 유효하지 않습니다: ${userLocation.lat}, ${userLocation.lng}`);
+      }
+      
+      if (!isValidCoord(targetShelter.coordinates.lat, targetShelter.coordinates.lng)) {
+        throw new Error(`도착지 좌표가 유효하지 않습니다: ${targetShelter.coordinates.lat}, ${targetShelter.coordinates.lng}`);
+      }
+
+      // 한국 내 좌표인지 확인 (대략적인 범위)
+      const isInKorea = (lat: number, lng: number) => {
+        return lat >= 33 && lat <= 39 && lng >= 124 && lng <= 132;
+      };
+      
+      if (!isInKorea(userLocation.lat, userLocation.lng)) {
+        console.warn("⚠️ 출발지가 한국 외 지역일 수 있습니다:", userLocation);
+      }
+      
+      if (!isInKorea(targetShelter.coordinates.lat, targetShelter.coordinates.lng)) {
+        console.warn("⚠️ 도착지가 한국 외 지역일 수 있습니다:", targetShelter.coordinates);
+      }
+      
       // 직선 거리 계산
       const straightDistance = calculateDistance(
         userLocation.lat, userLocation.lng,
         targetShelter.coordinates.lat, targetShelter.coordinates.lng
       );
 
-      const apiKey = process.env.NEXT_PUBLIC_TMAP_API_KEY;
-      console.log("🔑 TMAP API Key 확인:", apiKey ? "존재함" : "없음", apiKey?.substring(0, 10) + "...");
+      const apiKey = env.TMAP_API_KEY;
+      console.log("🔑 TMAP API Key 확인:", apiKey ? "존재함" : "없음", apiKey ? apiKey.substring(0, 10) + "..." : "없음");
+
+      if (!apiKey) {
+        throw new Error("TMAP API 키가 설정되지 않았습니다. .env.local 파일을 확인해주세요.");
+      }
 
       const headers = {
-        appKey: apiKey || "",
-        "Content-Type": "application/json"
+        "appKey": apiKey,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
       };
 
-      // 고급 도보 경로 요청 옵션
+      // TMAP pedestrian API 요청 형식에 맞게 수정
       const requestBody = {
         startX: userLocation.lng.toString(),
         startY: userLocation.lat.toString(),
@@ -169,12 +212,9 @@ const MapView = ({ shelters, selectedShelterId, onShelterSelect, onUserLocationC
         endY: targetShelter.coordinates.lat.toString(),
         reqCoordType: "WGS84GEO",
         resCoordType: "WGS84GEO",
-        startName: "현재위치",
-        endName: targetShelter.name,
-        searchOption: "0", // 0: 추천, 4: 최단시간, 10: 최단거리
-        trafficInfo: "Y",
-        passList: "",
-        sort: "index"
+        startName: encodeURIComponent("현재위치"),
+        endName: encodeURIComponent(targetShelter.name),
+        searchOption: "0"
       };
 
       console.log("🚀 길찾기 API 요청 시작");
@@ -196,12 +236,23 @@ const MapView = ({ shelters, selectedShelterId, onShelterSelect, onUserLocationC
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("❌ API 에러 상세:", {
-          status: response.status,
-          statusText: response.statusText,
-          errorText: errorText
-        });
-        throw new Error(`길찾기 API 오류 (${response.status}): ${response.statusText}`);
+        console.error("❌ TMAP API 에러 상세 분석:");
+        console.error("📊 상태:", response.status, response.statusText);
+        console.error("🔍 요청 URL:", "https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1&format=json");
+        console.error("📋 요청 헤더:", headers);
+        console.error("📦 요청 바디:", JSON.stringify(requestBody, null, 2));
+        console.error("💥 응답 에러:", errorText);
+        
+        // 400 에러의 경우 더 구체적인 메시지 제공
+        if (response.status === 400) {
+          console.error("🚨 400 Bad Request - 가능한 원인:");
+          console.error("1. API Key 문제");
+          console.error("2. 좌표값 형식 오류");
+          console.error("3. 필수 파라미터 누락");
+          console.error("4. 좌표 범위 초과 (한국 외 지역)");
+        }
+        
+        throw new Error(`길찾기 API 오류 (${response.status}): ${response.statusText}\n상세: ${errorText}`);
       }
 
       const data = await response.json();
