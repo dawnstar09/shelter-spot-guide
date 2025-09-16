@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, MapPin, Clock, Wifi, Bath, Bed, Heart, Navigation, NfcIcon, Users } from "lucide-react";
@@ -15,6 +15,21 @@ import { crowdingManager } from "@/utils/crowdingManager";
 import { CrowdingLevel, CROWDING_LEVELS } from "@/types/crowding";
 
 /**
+ * 운영시간과 현재 운영 상태를 확인하는 헬퍼 함수
+ */
+const getOperatingStatus = () => {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const isOpen = currentHour >= 9 && currentHour < 18; // 9시-18시 운영
+  
+  return {
+    hours: "오전 9시 - 오후 6시",
+    isOpen,
+    status: isOpen ? "운영중" : "운영종료"
+  };
+};
+
+/**
  * 쉼터 상세 페이지 컴포넌트
  * 특정 쉼터에 대한 종합적인 정보를 표시합니다
  * NFC 태그 등록 및 체크인 기능을 포함합니다
@@ -27,6 +42,9 @@ const ShelterDetailPage = () => {
   const [hourlyClicks, setHourlyClicks] = useState(0);
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [actualDistance, setActualDistance] = useState<string | null>(null);
+
+  // 운영 상태 계산 (useMemo로 최적화)
+  const operatingStatus = useMemo(() => getOperatingStatus(), []);
 
   // Haversine formula to calculate distance between two points on Earth
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -152,7 +170,12 @@ const ShelterDetailPage = () => {
                       </div>
                       <div className="flex items-center text-muted-foreground">
                         <Clock className="w-4 h-4 mr-1" />
-                        <span className="font-paperlogy-light">{shelter.operatingHours}</span>
+                        <span className="font-paperlogy-light">
+                          {operatingStatus.hours}
+                          <span className={`ml-2 px-2 py-1 rounded text-xs ${operatingStatus.isOpen ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            {operatingStatus.status}
+                          </span>
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -176,7 +199,12 @@ const ShelterDetailPage = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="font-medium">오늘</span>
-                    <span className="text-muted-foreground font-paperlogy-light">{shelter.operatingHours}</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-muted-foreground font-paperlogy-light">{operatingStatus.hours}</span>
+                      <span className={`px-2 py-1 rounded text-xs ${operatingStatus.isOpen ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        {operatingStatus.status}
+                      </span>
+                    </div>
                   </div>
                   <Separator />
                   <div className="grid grid-cols-2 gap-4 text-sm">

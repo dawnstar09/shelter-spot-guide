@@ -4,8 +4,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CrowdingLevel, CROWDING_LEVELS } from "@/types/crowding";
 import { crowdingManager } from "@/utils/crowdingManager";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+
+/**
+ * 운영시간과 현재 운영 상태를 확인하는 헬퍼 함수
+ */
+const getOperatingStatus = () => {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const isOpen = currentHour >= 9 && currentHour < 18; // 9시-18시 운영
+  
+  return {
+    hours: "오전 9시 - 오후 6시",
+    isOpen,
+    status: isOpen ? "운영중" : "운영종료"
+  };
+};
 
 /**
  * 쉼터 데이터 인터페이스
@@ -63,6 +78,9 @@ const ShelterCard = ({ shelter, showMap = false, onClick }: ShelterCardProps) =>
   const [crowdingLevel, setCrowdingLevel] = useState<CrowdingLevel>("여유");
   const [hourlyClicks, setHourlyClicks] = useState(0);
 
+  // 운영 상태 계산 (useMemo로 최적화)
+  const operatingStatus = useMemo(() => getOperatingStatus(), []);
+
   // 혼잡도 정보 로드
   useEffect(() => {
     const crowdingData = crowdingManager.getCrowdingData(shelter.id);
@@ -116,7 +134,12 @@ const ShelterCard = ({ shelter, showMap = false, onClick }: ShelterCardProps) =>
               </div>
               <div className="flex items-center text-muted-foreground">
                 <Clock className="w-4 h-4 mr-1" />
-                <span className="font-paperlogy-light whitespace-nowrap">{shelter.operatingHours}</span>
+                <span className="font-paperlogy-light whitespace-nowrap">
+                  {operatingStatus.hours}
+                  <span className={`ml-2 px-1 py-0.5 rounded text-xs ${operatingStatus.isOpen ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {operatingStatus.status}
+                  </span>
+                </span>
               </div>
             </div>
           </div>
