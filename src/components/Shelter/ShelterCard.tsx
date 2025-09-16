@@ -27,11 +27,23 @@ export interface Shelter {
     lat: number;
     lng: number;
   };
-  use_prnb: number;
-  r_area_sqr: string;
-  rmrk: string | null;
-  facility_type1: string;
-  facility_type2: string;
+  // New fields from muduwi_real.json
+  facilityType?: string;
+  facilityArea?: string;
+  capacity?: string;
+  fanCount?: string;
+  acCount?: string;
+  nightOperation?: boolean;
+  weekendOperation?: boolean;
+  accommodationAvailable?: boolean;
+  specialNotes?: string;
+  dataStandardDate?: string;
+  // Legacy fields (optional for backward compatibility)
+  use_prnb?: number;
+  r_area_sqr?: string;
+  rmrk?: string | null;
+  facility_type1?: string;
+  facility_type2?: string;
 }
 
 /**
@@ -118,16 +130,14 @@ const ShelterCard = ({ shelter, showMap = false, onClick }: ShelterCardProps) =>
             <div className="text-xs text-muted-foreground font-paperlogy-light">
               1시간: {hourlyClicks}회 클릭
             </div>
-            <div className="text-xs text-muted-foreground font-paperlogy-light mt-1">
-              대기시간: {shelter.waitTime}
-            </div>
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="pt-0">
         {/* 시설 정보 */}
-        <div className="flex items-center space-x-4 mb-4">
+        <div className="space-y-3 mb-4">
+          {/* 기존 시설 아이콘 */}
           <div className="flex items-center space-x-2">
             {shelter.facilities.wifi && (
               <div className="flex items-center text-accent">
@@ -147,6 +157,42 @@ const ShelterCard = ({ shelter, showMap = false, onClick }: ShelterCardProps) =>
             {shelter.facilities.firstAid && (
               <div className="flex items-center text-accent">
                 <Heart className="w-4 h-4" />
+              </div>
+            )}
+          </div>
+          
+          {/* 새로운 시설 정보 */}
+          <div className="text-xs text-muted-foreground space-y-1">
+            {shelter.facilityType && (
+              <div className="flex justify-between">
+                <span>시설유형:</span>
+                <span className="font-medium">{shelter.facilityType}</span>
+              </div>
+            )}
+            {shelter.capacity && (
+              <div className="flex justify-between">
+                <span>이용 가능 인원:</span>
+                <span className="font-medium">{shelter.capacity}명</span>
+              </div>
+            )}
+            {shelter.facilityArea && (
+              <div className="flex justify-between">
+                <span>시설 면적:</span>
+                <span className="font-medium">{shelter.facilityArea}㎡</span>
+              </div>
+            )}
+            {(shelter.fanCount || shelter.acCount) && (
+              <div className="flex justify-between">
+                <span>냉난방:</span>
+                <span className="font-medium">
+                  선풍기 {shelter.fanCount || 0}개, 에어컨 {shelter.acCount || 0}개
+                </span>
+              </div>
+            )}
+            {shelter.accommodationAvailable && (
+              <div className="flex justify-between">
+                <span>숙박:</span>
+                <span className="font-medium text-green-600">가능</span>
               </div>
             )}
           </div>

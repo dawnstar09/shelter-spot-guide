@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Search, Filter, SlidersHorizontal, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,29 +15,8 @@ import { CrowdingLevel, CROWDING_LEVELS } from "@/types/crowding";
 import type { Shelter } from "@/components/Shelter/ShelterCard";
 
 // 거리 정보가 추가된 쉼터 타입
-interface ShelterWithDistance {
-  id: string;
-  name: string;
-  address: string;
-  distance?: string;
+interface ShelterWithDistance extends Shelter {
   distanceValue?: number;
-  operatingHours: string;
-  waitTime: string;
-  facilities: {
-    wifi: boolean;
-    showers: boolean;
-    beds: boolean;
-    firstAid: boolean;
-  };
-  coordinates: {
-    lat: number;
-    lng: number;
-  };
-  use_prnb: number;
-  r_area_sqr: string;
-  rmrk: string | null;
-  facility_type1: string;
-  facility_type2: string;
 }
 
 export default function Home() {
@@ -129,28 +108,57 @@ export default function Home() {
     );
   }, [isClient]);
 
-  // 사용자 위치 기반으로 쉼터 거리 실시간 계산 및 정렬
+  // 사용자 위치 기반으로 쉼터 거리 배치 계산 (성능 최적화)
   useEffect(() => {
     if (userLocation) {
       console.log("🔄 거리 계산 시작...");
       
-      const updated: ShelterWithDistance[] = realShelters.map(shelter => {
-        const distance = calculateDistance(
-          userLocation.lat, userLocation.lng,
-          shelter.coordinates.lat, shelter.coordinates.lng
-        );
-        return {
-          ...shelter,
-          distance: formatDistance(distance),
-          distanceValue: distance // 정렬용 숫자 값
-        };
-      });
+      // 배치 처리로 UI 블로킹 방지
+      const batchSize = 50; // 한 번에 50개씩 처리
+      const processedShelters: ShelterWithDistance[] = [];
+      let currentIndex = 0;
 
-      // 거리순으로 정렬
-      const sorted = updated.sort((a, b) => (a.distanceValue || 0) - (b.distanceValue || 0));
-      
-      setSheltersWithDistance(sorted);
-      console.log("✅ 거리 계산 완료. 가장 가까운 쉼터:", sorted[0]?.name, sorted[0]?.distance);
+      const processBatch = () => {
+        const endIndex = Math.min(currentIndex + batchSize, realShelters.length);
+        
+        for (let i = currentIndex; i < endIndex; i++) {
+          const shelter = realShelters[i];
+          const distance = calculateDistance(
+            userLocation.lat, userLocation.lng,
+            shelter.coordinates.lat, shelter.coordinates.lng
+          );
+          
+          processedShelters.push({
+            ...shelter,
+            distance: formatDistance(distance),
+            distanceValue: distance
+          });
+        }
+        
+        currentIndex = endIndex;
+        
+        // 부분 업데이트로 사용자가 진행 상황을 볼 수 있게 함
+        if (currentIndex <= realShelters.length) {
+          const sorted = [...processedShelters].sort((a, b) => {
+            // 거리 계산이 안 된 항목들은 맨 뒤로
+            if (!a.distanceValue && !b.distanceValue) return 0;
+            if (!a.distanceValue) return 1;
+            if (!b.distanceValue) return -1;
+            return a.distanceValue - b.distanceValue;
+          });
+          setSheltersWithDistance(sorted);
+        }
+        
+        // 더 처리할 항목이 있으면 다음 배치 예약
+        if (currentIndex < realShelters.length) {
+          requestAnimationFrame(processBatch);
+        } else {
+          console.log("✅ 거리 계산 완료. 총", realShelters.length, "개 처리됨");
+        }
+      };
+
+      // 첫 번째 배치 시작
+      processBatch();
     }
   }, [userLocation]);
 
@@ -165,40 +173,51 @@ export default function Home() {
     }
   }, [enableRouting]);
 
-  // 검색어와 혼잡도 필터를 기반으로 쉼터 필터링
-  const filteredShelters = sheltersWithDistance.filter(shelter => {
-    const matchesSearch = shelter.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         shelter.address.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // 클라이언트 사이드에서만 crowdingManager 사용
-    if (!isClient) {
-      return matchesSearch && filterBy === "all";
-    }
-    
-    const crowdingData = crowdingManager.getCrowdingData(shelter.id);
-    const matchesFilter = filterBy === "all" || 
-      (filterBy === "여유" && crowdingData.level === "여유") ||
-      (filterBy === "보통" && crowdingData.level === "보통") ||
-      (filterBy === "혼잡" && crowdingData.level === "혼잡");
-    
-    return matchesSearch && matchesFilter;
-  });
-
-  // 선택된 기준에 따라 쉼터 정렬
-  const sortedShelters = [...filteredShelters].sort((a, b) => {
-    if (sortBy === "distance") {
-      return (a.distanceValue || 0) - (b.distanceValue || 0);
-    } else if (sortBy === "congestion" && isClient) {
-      const aCrowding = crowdingManager.getCrowdingData(a.id);
-      const bCrowding = crowdingManager.getCrowdingData(b.id);
+  // 검색어와 혼잡도 필터를 기반으로 쉼터 필터링 (useMemo로 최적화)
+  const filteredShelters = useMemo(() => {
+    return sheltersWithDistance.filter(shelter => {
+      const matchesSearch = shelter.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           shelter.address.toLowerCase().includes(searchQuery.toLowerCase());
       
-      const crowdingOrder: Record<CrowdingLevel, number> = { "여유": 1, "보통": 2, "혼잡": 3 };
-      return crowdingOrder[aCrowding.level] - crowdingOrder[bCrowding.level];
-    } else if (sortBy === "name") {
-      return a.name.localeCompare(b.name);
+      // 클라이언트 사이드에서만 crowdingManager 사용
+      if (!isClient) {
+        return matchesSearch && filterBy === "all";
+      }
+      
+      if (filterBy === "all") return matchesSearch;
+      
+      const crowdingData = crowdingManager.getCrowdingData(shelter.id);
+      return matchesSearch && crowdingData.level === filterBy;
+    });
+  }, [sheltersWithDistance, searchQuery, filterBy, isClient]);
+
+  // 정렬된 쉼터 목록 (useMemo로 최적화)
+  const sortedShelters = useMemo(() => {
+    const filtered = [...filteredShelters];
+    
+    switch (sortBy) {
+      case "distance":
+        return filtered.sort((a, b) => {
+          // 거리 계산이 안 된 항목들은 맨 뒤로
+          if (!a.distanceValue && !b.distanceValue) return 0;
+          if (!a.distanceValue) return 1;
+          if (!b.distanceValue) return -1;
+          return a.distanceValue - b.distanceValue;
+        });
+      case "name":
+        return filtered.sort((a, b) => a.name.localeCompare(b.name));
+      case "crowding":
+        if (!isClient) return filtered;
+        return filtered.sort((a, b) => {
+          const aCrowding = crowdingManager.getCrowdingData(a.id);
+          const bCrowding = crowdingManager.getCrowdingData(b.id);
+          const crowdingOrder: Record<CrowdingLevel, number> = { "여유": 1, "보통": 2, "혼잡": 3 };
+          return crowdingOrder[aCrowding.level] - crowdingOrder[bCrowding.level];
+        });
+      default:
+        return filtered;
     }
-    return 0;
-  });
+  }, [filteredShelters, sortBy, isClient]);
 
   return (
     <div className="min-h-screen bg-background">

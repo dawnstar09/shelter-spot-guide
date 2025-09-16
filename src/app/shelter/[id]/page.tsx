@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, MapPin, Clock, Wifi, Bath, Bed, Heart, Navigation, Phone, NfcIcon, Users } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, Wifi, Bath, Bed, Heart, Navigation, NfcIcon, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,56 @@ const ShelterDetailPage = () => {
   const shelter = id ? getShelterById(id) : null;
   const [crowdingLevel, setCrowdingLevel] = useState<CrowdingLevel>("여유");
   const [hourlyClicks, setHourlyClicks] = useState(0);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [actualDistance, setActualDistance] = useState<string | null>(null);
+
+  // Haversine formula to calculate distance between two points on Earth
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Radius of the Earth in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const d = R * c;
+    return d;
+  };
+
+  // 사용자 위치 얻기
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation({ lat: latitude, lng: longitude });
+          
+          if (shelter) {
+            const distance = calculateDistance(
+              latitude, 
+              longitude, 
+              shelter.coordinates.lat, 
+              shelter.coordinates.lng
+            );
+            setActualDistance(`${distance.toFixed(1)} km`);
+          }
+        },
+        (error) => {
+          console.log('Geolocation error:', error);
+          // 위치 허용을 안 했을 때 기본 거리 사용
+          if (shelter) {
+            setActualDistance(shelter.distance);
+          }
+        }
+      );
+    } else {
+      // 지리적 위치를 지원하지 않는 경우 기본 거리 사용
+      if (shelter) {
+        setActualDistance(shelter.distance);
+      }
+    }
+  }, [shelter]);
 
   // 혼잡도 정보 로드
   useEffect(() => {
@@ -98,7 +148,7 @@ const ShelterDetailPage = () => {
                     <div className="flex items-center space-x-4 text-sm">
                       <div className="flex items-center text-muted-foreground">
                         <Navigation className="w-4 h-4 mr-1" />
-                        <span className="font-paperlogy-light">{shelter.distance} 거리</span>
+                        <span className="font-paperlogy-light">{actualDistance || shelter.distance} 거리</span>
                       </div>
                       <div className="flex items-center text-muted-foreground">
                         <Clock className="w-4 h-4 mr-1" />
@@ -163,27 +213,77 @@ const ShelterDetailPage = () => {
               </CardContent>
             </Card>
 
-            {/* 시설 */}
+            {/* 시설 정보 */}
             <Card>
               <CardHeader>
-                <CardTitle>이용 가능한 시설</CardTitle>
+                <CardTitle>시설 정보</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {['회원이용시설', '공공청사', '공공시설', '특정계층이용시설', '복지·문화·체육시설'].map(facility => {
-                    const isAvailable = shelter.facility_type1 === facility || shelter.facility_type2 === facility;
-                    return (
-                      <div
-                        key={facility}
-                        className={`p-4 rounded-lg text-center ${
-                          isAvailable ? 'bg-accent text-accent-foreground' : 'bg-muted opacity-50'
-                        }`}
-                      >
-                        <div className="font-medium text-sm">{facility}</div>
-                      </div>
-                    );
-                  })}
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-sm text-muted-foreground">시설 유형</span>
+                    <p className="font-medium">{shelter.facilityType || "정보 없음"}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-muted-foreground">시설 면적</span>
+                    <p className="font-medium">{shelter.facilityArea ? `${shelter.facilityArea}㎡` : "정보 없음"}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-muted-foreground">수용 인원</span>
+                    <p className="font-medium">{shelter.capacity ? `${shelter.capacity}명` : "정보 없음"}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-muted-foreground">숙박 가능</span>
+                    <p className="font-medium">{shelter.accommodationAvailable ? "가능" : "불가능"}</p>
+                  </div>
                 </div>
+                
+                <Separator />
+                
+                <div>
+                  <span className="text-sm text-muted-foreground mb-3 block">냉난방 시설</span>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                      <span>선풍기: {shelter.fanCount}개</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                      <span>에어컨: {shelter.acCount}개</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 운영 정보 */}
+                <Separator />
+                <div>
+                  <span className="text-sm text-muted-foreground mb-3 block">운영 정보</span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span>야간 운영</span>
+                      <span className={shelter.nightOperation ? "text-green-600" : "text-red-600"}>
+                        {shelter.nightOperation ? "가능" : "불가능"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>주말 운영</span>
+                      <span className={shelter.weekendOperation ? "text-green-600" : "text-red-600"}>
+                        {shelter.weekendOperation ? "가능" : "불가능"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 특이사항 */}
+                {shelter.specialNotes && (
+                  <>
+                    <Separator />
+                    <div>
+                      <span className="text-sm text-muted-foreground mb-2 block">특이사항</span>
+                      <p className="text-sm">{shelter.specialNotes}</p>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -200,11 +300,8 @@ const ShelterDetailPage = () => {
                   <div className="text-3xl font-bold mb-2">
                     {crowdingLevel}
                   </div>
-                  <div className="text-sm text-muted-foreground mb-2 font-paperlogy-light">
-                    1시간 클릭 수: {hourlyClicks}회
-                  </div>
                   <div className="text-sm text-muted-foreground mb-4 font-paperlogy-light">
-                    예상 대기시간: {shelter.waitTime}
+                    1시간 클릭 수: {hourlyClicks}회
                   </div>
                 </div>
                 <Progress 
@@ -214,25 +311,6 @@ const ShelterDetailPage = () => {
                 <div className="text-xs text-muted-foreground text-center font-paperlogy-light">
                   실시간 업데이트됨
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* 빠른 작업 */}
-            <Card>
-              <CardHeader>
-                <CardTitle>빠른 작업</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button className="w-full">
-                  길찾기
-                </Button>
-                <Button variant="outline" className="w-full">
-                  <Phone className="w-4 h-4 mr-2" />
-                  쉼터 전화
-                </Button>
-                <Button variant="outline" className="w-full">
-                  위치 공유
-                </Button>
               </CardContent>
             </Card>
 
