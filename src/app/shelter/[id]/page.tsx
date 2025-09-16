@@ -341,29 +341,6 @@ const ShelterDetailPage = () => {
                 </div>
               </CardContent>
             </Card>
-
-            {/* 추가 정보 */}
-            <Card>
-              <CardHeader>
-                <CardTitle>추가 정보</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div>
-                  <span className="font-medium">이용 가능 인원:</span>
-                  <span className="text-muted-foreground ml-2 font-paperlogy-light">{shelter.use_prnb}명</span>
-                </div>
-                <div>
-                  <span className="font-medium">시설 면적:</span>
-                  <span className="text-muted-foreground ml-2 font-paperlogy-light">{shelter.r_area_sqr}㎡</span>
-                </div>
-                {shelter.rmrk && (
-                  <div>
-                    <span className="font-medium">비고:</span>
-                    <span className="text-muted-foreground ml-2 font-paperlogy-light">{shelter.rmrk}</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
