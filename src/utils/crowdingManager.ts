@@ -59,8 +59,26 @@ export class CrowdingManager {
     ).length;
   }
 
-  // 혼잡도 레벨 계산
-  calculateCrowdingLevel(hourlyClicks: number): CrowdingLevel {
+  // 혼잡도 레벨 계산 (수용 인원수 기반)
+  calculateCrowdingLevel(hourlyClicks: number, capacity?: string): CrowdingLevel {
+    // 수용 인원수가 있는 경우 동적 기준 사용
+    if (capacity && capacity !== '') {
+      const capacityNum = parseInt(capacity);
+      if (!isNaN(capacityNum) && capacityNum > 0) {
+        const threshold2_5 = Math.floor(capacityNum * 0.4); // 2/5
+        const threshold4_5 = Math.floor(capacityNum * 0.8); // 4/5
+        
+        if (hourlyClicks >= threshold4_5) {
+          return "혼잡";
+        } else if (hourlyClicks >= threshold2_5) {
+          return "보통";
+        } else {
+          return "여유";
+        }
+      }
+    }
+    
+    // 기본 기준 (수용 인원수가 없는 경우)
     if (hourlyClicks >= CROWDING_THRESHOLDS.BUSY) {
       return "혼잡";
     } else if (hourlyClicks >= CROWDING_THRESHOLDS.NORMAL) {
@@ -71,9 +89,9 @@ export class CrowdingManager {
   }
 
   // 특정 쉼터의 혼잡도 정보 가져오기
-  getCrowdingData(shelterId: string): CrowdingData {
+  getCrowdingData(shelterId: string, capacity?: string): CrowdingData {
     const hourlyClicks = this.getHourlyClicks(shelterId);
-    const level = this.calculateCrowdingLevel(hourlyClicks);
+    const level = this.calculateCrowdingLevel(hourlyClicks, capacity);
     
     return {
       shelterId,

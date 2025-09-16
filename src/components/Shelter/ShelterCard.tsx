@@ -83,10 +83,10 @@ const ShelterCard = ({ shelter, showMap = false, onClick }: ShelterCardProps) =>
 
   // 혼잡도 정보 로드
   useEffect(() => {
-    const crowdingData = crowdingManager.getCrowdingData(shelter.id);
+    const crowdingData = crowdingManager.getCrowdingData(shelter.id, shelter.capacity);
     setCrowdingLevel(crowdingData.level);
     setHourlyClicks(crowdingData.hourlyClicks);
-  }, [shelter.id]);
+  }, [shelter.id, shelter.capacity]);
 
   // 카드 클릭 핸들러
   const handleCardClick = () => {
@@ -94,7 +94,7 @@ const ShelterCard = ({ shelter, showMap = false, onClick }: ShelterCardProps) =>
     crowdingManager.recordClick(shelter.id);
     
     // 혼잡도 정보 업데이트
-    const updatedData = crowdingManager.getCrowdingData(shelter.id);
+    const updatedData = crowdingManager.getCrowdingData(shelter.id, shelter.capacity);
     setCrowdingLevel(updatedData.level);
     setHourlyClicks(updatedData.hourlyClicks);
     

@@ -100,7 +100,7 @@ const ShelterDetailPage = () => {
       // 페이지 접근 시 클릭 기록
       crowdingManager.recordClick(shelter.id);
       
-      const crowdingData = crowdingManager.getCrowdingData(shelter.id);
+      const crowdingData = crowdingManager.getCrowdingData(shelter.id, shelter.capacity);
       setCrowdingLevel(crowdingData.level);
       setHourlyClicks(crowdingData.hourlyClicks);
     }
