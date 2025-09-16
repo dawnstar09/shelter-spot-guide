@@ -44,6 +44,10 @@ export const realShelters: Shelter[] = filteredShelterData.map((shelter, index) 
     }
   };
 
+  // 고정된 400개 정도에 역방향 스케줄 적용 (인덱스 기반으로 고정)
+  // 인덱스가 홀수인 경우에 역방향 스케줄 적용 (약 50% 고정)
+  const reverseSchedule = index % 2 === 1;
+
   return {
     id: `shelter-${index}`,
     name: shelter.RESTARER_FACLT_NM,
@@ -69,6 +73,7 @@ export const realShelters: Shelter[] = filteredShelterData.map((shelter, index) 
     acCount: shelter.ARCNDTN_HOLD_VCNT,
     nightOperation: shelter.NIGHT_EXTS_OPERT_YN === "Y",
     weekendOperation: shelter.WKEND_OPERT_YN === "Y",
+    reverseSchedule: reverseSchedule,
     accommodationAvailable: shelter.STAYNG_POSBL_YN === "Y",
     specialNotes: shelter.PARTCLR_MATR,
     dataStandardDate: shelter.DATA_STD_DE,

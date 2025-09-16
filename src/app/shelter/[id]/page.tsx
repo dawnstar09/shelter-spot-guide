@@ -17,13 +17,66 @@ import { CrowdingLevel, CROWDING_LEVELS } from "@/types/crowding";
 /**
  * 운영시간과 현재 운영 상태를 확인하는 헬퍼 함수
  */
-const getOperatingStatus = () => {
+const getOperatingStatus = (weekendOperation?: boolean, reverseSchedule?: boolean) => {
   const now = new Date();
   const currentHour = now.getHours();
-  const isOpen = currentHour >= 9 && currentHour < 18; // 9시-18시 운영
+  const currentDay = now.getDay(); // 0: 일요일, 1: 월요일, ..., 6: 토요일
+  
+  let openHour = 9;
+  let closeHour = 18;
+  let isOpen = false;
+  let hours = "";
+  
+  // 주말 (토요일: 6, 일요일: 0)
+  if (currentDay === 0 || currentDay === 6) {
+    if (weekendOperation) {
+      if (reverseSchedule) {
+        // 역방향: 주말도 8시-22시
+        hours = "오전 8시 - 오후 10시";
+        openHour = 8;
+        closeHour = 22;
+      } else {
+        // 일반: 주말 9시-18시
+        hours = "오전 9시 - 오후 6시";
+        openHour = 9;
+        closeHour = 18;
+      }
+      isOpen = currentHour >= openHour && currentHour < closeHour;
+    } else {
+      hours = "운영안함";
+      isOpen = false;
+    }
+  }
+  // 평일
+  else {
+    if (reverseSchedule) {
+      // 역방향 스케줄: 화목은 9-18시, 월수금은 8-22시
+      if (currentDay === 2 || currentDay === 4) { // 화목
+        hours = "오전 9시 - 오후 6시";
+        openHour = 9;
+        closeHour = 18;
+      } else { // 월수금
+        hours = "오전 8시 - 오후 10시";
+        openHour = 8;
+        closeHour = 22;
+      }
+    } else {
+      // 일반 스케줄: 화목은 8-22시, 월수금은 9-18시
+      if (currentDay === 2 || currentDay === 4) { // 화목
+        hours = "오전 8시 - 오후 10시";
+        openHour = 8;
+        closeHour = 22;
+      } else { // 월수금
+        hours = "오전 9시 - 오후 6시";
+        openHour = 9;
+        closeHour = 18;
+      }
+    }
+    isOpen = currentHour >= openHour && currentHour < closeHour;
+  }
   
   return {
-    hours: "오전 9시 - 오후 6시",
+    hours,
     isOpen,
     status: isOpen ? "운영중" : "운영종료"
   };
@@ -44,7 +97,7 @@ const ShelterDetailPage = () => {
   const [actualDistance, setActualDistance] = useState<string | null>(null);
 
   // 운영 상태 계산 (useMemo로 최적화)
-  const operatingStatus = useMemo(() => getOperatingStatus(), []);
+  const operatingStatus = useMemo(() => getOperatingStatus(shelter?.weekendOperation, shelter?.reverseSchedule), [shelter?.weekendOperation, shelter?.reverseSchedule]);
 
   // Haversine formula to calculate distance between two points on Earth
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -139,49 +192,51 @@ const ShelterDetailPage = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* 경로 표시 */}
         <div className="flex items-center space-x-2 mb-6">
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/" className="flex items-center space-x-1">
+            <Link href="/shelters" className="flex items-center space-x-1">
               <ArrowLeft className="w-4 h-4" />
-              <span>지도로 돌아가기</span>
+              <span className="hidden sm:inline">지도로 돌아가기</span>
+              <span className="sm:hidden">뒤로</span>
             </Link>
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* 메인 콘텐츠 */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* 쉼터 헤더 */}
             <Card>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-2xl font-bold mb-2">{shelter.name}</CardTitle>
-                    <div className="flex items-center text-muted-foreground text-sm mb-4">
-                      <MapPin className="w-4 h-4 mr-1" />
-                      <span className="font-paperlogy-light">{shelter.address}</span>
+              <CardHeader className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-xl sm:text-2xl font-bold mb-2 leading-tight break-words">{shelter.name}</CardTitle>
+                    <div className="flex items-start text-muted-foreground text-sm mb-4">
+                      <MapPin className="w-4 h-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span className="font-paperlogy-light leading-relaxed break-words">{shelter.address}</span>
                     </div>
-                    <div className="flex items-center space-x-4 text-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 text-sm">
                       <div className="flex items-center text-muted-foreground">
-                        <Navigation className="w-4 h-4 mr-1" />
+                        <Navigation className="w-4 h-4 mr-1 flex-shrink-0" />
                         <span className="font-paperlogy-light">{actualDistance || shelter.distance} 거리</span>
                       </div>
-                      <div className="flex items-center text-muted-foreground">
-                        <Clock className="w-4 h-4 mr-1" />
-                        <span className="font-paperlogy-light">
-                          {operatingStatus.hours}
-                          <span className={`ml-2 px-2 py-1 rounded text-xs ${operatingStatus.isOpen ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      <div className="flex items-start sm:items-center text-muted-foreground">
+                        <Clock className="w-4 h-4 mr-1 mt-0.5 sm:mt-0 flex-shrink-0" />
+                        <div className="font-paperlogy-light">
+                          <span>{operatingStatus.hours}</span>
+                          <span className={`ml-2 px-2 py-1 rounded text-xs inline-block ${operatingStatus.isOpen ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                             {operatingStatus.status}
                           </span>
-                        </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${crowdingInfo.bgColor} ${crowdingInfo.color}`}>
+                  <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${crowdingInfo.bgColor} ${crowdingInfo.color} self-start flex-shrink-0`}>
                     <Users className="w-4 h-4 mr-1" />
-                    {crowdingInfo.level} ({hourlyClicks}회/시간)
+                    <span className="hidden sm:inline">{crowdingInfo.level} ({hourlyClicks}회/시간)</span>
+                    <span className="sm:hidden">{crowdingInfo.level}</span>
                   </div>
                 </div>
               </CardHeader>
@@ -189,8 +244,8 @@ const ShelterDetailPage = () => {
 
             {/* 운영 시간 */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center space-x-2 text-lg">
                   <Clock className="w-5 h-5 text-primary" />
                   <span>운영 시간</span>
                 </CardTitle>
@@ -211,29 +266,55 @@ const ShelterDetailPage = () => {
                     <div className="space-y-2">
                       <div className="flex justify-between">
                         <span>월요일</span>
-                        <span className="text-muted-foreground font-paperlogy-light">오전 9시 - 오후 5시</span>
+                        <span className="text-muted-foreground font-paperlogy-light">
+                          {shelter?.reverseSchedule ? "오전 8시 - 오후 10시" : "오전 9시 - 오후 6시"}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span>화요일</span>
-                        <span className="text-muted-foreground font-paperlogy-light">오전 9시 - 오후 5시</span>
+                        <span className="text-muted-foreground font-paperlogy-light">
+                          {shelter?.reverseSchedule ? "오전 9시 - 오후 6시" : "오전 8시 - 오후 10시"}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span>수요일</span>
-                        <span className="text-muted-foreground font-paperlogy-light">오전 9시 - 오후 5시</span>
+                        <span className="text-muted-foreground font-paperlogy-light">
+                          {shelter?.reverseSchedule ? "오전 8시 - 오후 10시" : "오전 9시 - 오후 6시"}
+                        </span>
                       </div>
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between">
                         <span>목요일</span>
-                        <span className="text-muted-foreground font-paperlogy-light">오전 9시 - 오후 5시</span>
+                        <span className="text-muted-foreground font-paperlogy-light">
+                          {shelter?.reverseSchedule ? "오전 9시 - 오후 6시" : "오전 8시 - 오후 10시"}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span>금요일</span>
-                        <span className="text-muted-foreground font-paperlogy-light">오전 9시 - 오후 5시</span>
+                        <span className="text-muted-foreground font-paperlogy-light">
+                          {shelter?.reverseSchedule ? "오전 8시 - 오후 10시" : "오전 9시 - 오후 6시"}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span>토요일</span>
-                        <span className="text-muted-foreground font-paperlogy-light">오전 10시 - 오후 2시</span>
+                        <span className="text-muted-foreground font-paperlogy-light">
+                          {shelter?.weekendOperation 
+                            ? (shelter?.reverseSchedule ? "오전 8시 - 오후 10시" : "오전 9시 - 오후 6시")
+                            : "운영안함"
+                          }
+                        </span>
+                      </div>
+                    </div>
+                    <div className="col-span-2">
+                      <div className="flex justify-between">
+                        <span>일요일</span>
+                        <span className="text-muted-foreground font-paperlogy-light">
+                          {shelter?.weekendOperation 
+                            ? (shelter?.reverseSchedule ? "오전 8시 - 오후 10시" : "오전 9시 - 오후 6시")
+                            : "운영안함"
+                          }
+                        </span>
                       </div>
                     </div>
                   </div>

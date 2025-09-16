@@ -10,13 +10,66 @@ import Link from "next/link";
 /**
  * 운영시간과 현재 운영 상태를 확인하는 헬퍼 함수
  */
-const getOperatingStatus = () => {
+const getOperatingStatus = (weekendOperation?: boolean, reverseSchedule?: boolean) => {
   const now = new Date();
   const currentHour = now.getHours();
-  const isOpen = currentHour >= 9 && currentHour < 18; // 9시-18시 운영
+  const currentDay = now.getDay(); // 0: 일요일, 1: 월요일, ..., 6: 토요일
+  
+  let openHour = 9;
+  let closeHour = 18;
+  let isOpen = false;
+  let hours = "";
+  
+  // 주말 (토요일: 6, 일요일: 0)
+  if (currentDay === 0 || currentDay === 6) {
+    if (weekendOperation) {
+      if (reverseSchedule) {
+        // 역방향: 주말도 8시-22시
+        hours = "오전 8시 - 오후 10시";
+        openHour = 8;
+        closeHour = 22;
+      } else {
+        // 일반: 주말 9시-18시
+        hours = "오전 9시 - 오후 6시";
+        openHour = 9;
+        closeHour = 18;
+      }
+      isOpen = currentHour >= openHour && currentHour < closeHour;
+    } else {
+      hours = "운영안함";
+      isOpen = false;
+    }
+  }
+  // 평일
+  else {
+    if (reverseSchedule) {
+      // 역방향 스케줄: 화목은 9-18시, 월수금은 8-22시
+      if (currentDay === 2 || currentDay === 4) { // 화목
+        hours = "오전 9시 - 오후 6시";
+        openHour = 9;
+        closeHour = 18;
+      } else { // 월수금
+        hours = "오전 8시 - 오후 10시";
+        openHour = 8;
+        closeHour = 22;
+      }
+    } else {
+      // 일반 스케줄: 화목은 8-22시, 월수금은 9-18시
+      if (currentDay === 2 || currentDay === 4) { // 화목
+        hours = "오전 8시 - 오후 10시";
+        openHour = 8;
+        closeHour = 22;
+      } else { // 월수금
+        hours = "오전 9시 - 오후 6시";
+        openHour = 9;
+        closeHour = 18;
+      }
+    }
+    isOpen = currentHour >= openHour && currentHour < closeHour;
+  }
   
   return {
-    hours: "오전 9시 - 오후 6시",
+    hours,
     isOpen,
     status: isOpen ? "운영중" : "운영종료"
   };
@@ -50,6 +103,7 @@ export interface Shelter {
   acCount?: string;
   nightOperation?: boolean;
   weekendOperation?: boolean;
+  reverseSchedule?: boolean; // 역방향 운영시간 (월수금토일: 8-22시, 화목: 9-18시)
   accommodationAvailable?: boolean;
   specialNotes?: string;
   dataStandardDate?: string;
@@ -79,7 +133,7 @@ const ShelterCard = ({ shelter, showMap = false, onClick }: ShelterCardProps) =>
   const [hourlyClicks, setHourlyClicks] = useState(0);
 
   // 운영 상태 계산 (useMemo로 최적화)
-  const operatingStatus = useMemo(() => getOperatingStatus(), []);
+  const operatingStatus = useMemo(() => getOperatingStatus(shelter.weekendOperation, shelter.reverseSchedule), [shelter.weekendOperation, shelter.reverseSchedule]);
 
   // 혼잡도 정보 로드
   useEffect(() => {
