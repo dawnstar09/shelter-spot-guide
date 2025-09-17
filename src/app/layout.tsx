@@ -26,6 +26,7 @@ export default function RootLayout({
         <link rel="preload" href="/fonts/Paperlogy-2ExtraLight.ttf" as="font" type="font/ttf" crossOrigin="" />
         <script
           src={`https://apis.openapi.sk.com/tmap/jsv2?version=1&appKey=${process.env.NEXT_PUBLIC_TMAP_API_KEY}`}
+          async={false}
         />
       </head>
       <body>

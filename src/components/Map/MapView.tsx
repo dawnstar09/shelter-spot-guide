@@ -40,6 +40,50 @@ const MapView = ({ shelters, selectedShelterId, onShelterSelect, onUserLocationC
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [isRoutingMode, setIsRoutingMode] = useState(false);
   const [routeInfo, setRouteInfo] = useState<{distance: string, time: string} | null>(null);
+  const [isTmapReady, setIsTmapReady] = useState(false);
+
+  // Tmap 로드 대기 및 확인
+  useEffect(() => {
+    const checkTmapReady = () => {
+      if (typeof window !== 'undefined' && window.Tmapv2) {
+        // Tmap API의 핵심 클래스들이 모두 로드되었는지 확인
+        if (window.Tmapv2.Map && window.Tmapv2.LatLng && window.Tmapv2.Marker) {
+          console.log('✅ Tmapv2 모든 클래스 로드 완료');
+          setIsTmapReady(true);
+          return true;
+        } else {
+          console.log('⏳ Tmapv2 일부 클래스 아직 로드 중...');
+        }
+      }
+      return false;
+    };
+
+    // 이미 로드되어 있는지 확인
+    if (checkTmapReady()) {
+      return;
+    }
+
+    // 로드될 때까지 대기
+    const interval = setInterval(() => {
+      if (checkTmapReady()) {
+        clearInterval(interval);
+      }
+    }, 500); // 간격을 500ms로 늘림
+
+    // 15초 후 타임아웃 (시간을 늘림)
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+      if (!window.Tmapv2 || !window.Tmapv2.Map || !window.Tmapv2.LatLng) {
+        console.error('❌ Tmapv2 로드 실패 - 타임아웃');
+        setError('지도 API 로딩에 실패했습니다. 페이지를 새로고침해주세요.');
+      }
+    }, 15000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, []);
 
   // 사용자 위치 마커를 위한 초록색 SVG 아이콘
   const getUserMarkerIcon = () => {
@@ -420,31 +464,55 @@ const MapView = ({ shelters, selectedShelterId, onShelterSelect, onUserLocationC
   };
 
   useEffect(() => {
-    if (!window.Tmapv2) {
-      setError("Tmapv2가 준비되지 않았습니다. (스크립트가 layout.tsx에서 head에 동기적으로 삽입되어야 합니다)");
+    if (!isTmapReady) {
       return;
     }
+    
+    if (!window.Tmapv2) {
+      setError("Tmapv2가 준비되지 않았습니다. 페이지를 새로고침해주세요.");
+      return;
+    }
+    
     if (!mapRef.current) {
       setError("지도 컨테이너가 준비되지 않았습니다.");
       return;
     }
+    
     // 기존 map 인스턴스가 있으면 정리
     if (mapInstanceRef.current) {
       mapInstanceRef.current.destroy && mapInstanceRef.current.destroy();
       mapInstanceRef.current = null;
       if (mapRef.current) mapRef.current.innerHTML = '';
     }
+    
     try {
+      console.log('🗺️ 지도 초기화 시작');
+      
+      // Tmap API 클래스들이 사용 가능한지 다시 한 번 확인
+      if (!window.Tmapv2.Map) {
+        throw new Error('Tmapv2.Map 클래스를 찾을 수 없습니다');
+      }
+      if (!window.Tmapv2.LatLng) {
+        throw new Error('Tmapv2.LatLng 클래스를 찾을 수 없습니다');
+      }
+      
+      // LatLng 생성 테스트
+      const centerPosition = new window.Tmapv2.LatLng(env.MAP_CENTER_LAT, env.MAP_CENTER_LNG);
+      console.log('✅ LatLng 생성 성공:', centerPosition);
+      
       mapInstanceRef.current = new window.Tmapv2.Map(mapRef.current, {
-        center: new window.Tmapv2.LatLng(env.MAP_CENTER_LAT, env.MAP_CENTER_LNG),
+        center: centerPosition,
         width: "100%",
         height: "100%",
         zoom: env.MAP_DEFAULT_ZOOM
       });
       setIsLoaded(true);
+      console.log('✅ 지도 초기화 완료');
     } catch (e) {
+      console.error('❌ 지도 초기화 실패:', e);
       setError("지도 초기화 실패: " + (e instanceof Error ? e.message : String(e)));
     }
+    
     // 언마운트 시 map 정리
     return () => {
       if (mapInstanceRef.current) {
@@ -453,7 +521,7 @@ const MapView = ({ shelters, selectedShelterId, onShelterSelect, onUserLocationC
       }
       if (mapRef.current) mapRef.current.innerHTML = '';
     };
-  }, []);
+  }, [isTmapReady]);
 
   useEffect(() => {
     if (!isLoaded || !mapInstanceRef.current) return;
@@ -565,7 +633,14 @@ const MapView = ({ shelters, selectedShelterId, onShelterSelect, onUserLocationC
       
       {/* 로딩 메시지 */}
       {!error && !isLoaded && (
-        <span className="text-muted-foreground">지도를 불러오는 중...</span>
+        <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+            <span className="text-muted-foreground">
+              {!isTmapReady ? "지도 API 로딩 중..." : "지도를 불러오는 중..."}
+            </span>
+          </div>
+        </div>
       )}
     </Card>
   );
