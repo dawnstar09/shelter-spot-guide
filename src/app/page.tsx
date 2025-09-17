@@ -190,56 +190,66 @@ export default function Home() {
 
   // 사용자 위치 기반으로 쉼터 거리 배치 계산 (성능 최적화)
   useEffect(() => {
-    if (userLocation) {
-      console.log("🔄 거리 계산 시작...");
+    if (!userLocation) return;
+    
+    console.log("🔄 거리 계산 시작...");
+    
+    // 취소 플래그
+    let cancelled = false;
+    
+    // 배치 처리로 UI 블로킹 방지
+    const batchSize = 50; // 한 번에 50개씩 처리
+    const processedShelters: ShelterWithDistance[] = [];
+    let currentIndex = 0;
+
+    const processBatch = () => {
+      if (cancelled) return; // 컴포넌트가 언마운트되면 중단
       
-      // 배치 처리로 UI 블로킹 방지
-      const batchSize = 50; // 한 번에 50개씩 처리
-      const processedShelters: ShelterWithDistance[] = [];
-      let currentIndex = 0;
+      const endIndex = Math.min(currentIndex + batchSize, realShelters.length);
+      
+      for (let i = currentIndex; i < endIndex; i++) {
+        const shelter = realShelters[i];
+        const distance = calculateDistance(
+          userLocation.lat, userLocation.lng,
+          shelter.coordinates.lat, shelter.coordinates.lng
+        );
+        
+        processedShelters.push({
+          ...shelter,
+          distance: formatDistance(distance),
+          distanceValue: distance
+        });
+      }
+      
+      currentIndex = endIndex;
+      
+      // 부분 업데이트로 사용자가 진행 상황을 볼 수 있게 함
+      if (currentIndex <= realShelters.length && !cancelled) {
+        const sorted = [...processedShelters].sort((a, b) => {
+          // 거리 계산이 안 된 항목들은 맨 뒤로
+          if (!a.distanceValue && !b.distanceValue) return 0;
+          if (!a.distanceValue) return 1;
+          if (!b.distanceValue) return -1;
+          return a.distanceValue - b.distanceValue;
+        });
+        setSheltersWithDistance(sorted);
+      }
+      
+      // 더 처리할 항목이 있으면 다음 배치 예약
+      if (currentIndex < realShelters.length && !cancelled) {
+        requestAnimationFrame(processBatch);
+      } else if (!cancelled) {
+        console.log("✅ 거리 계산 완료. 총", realShelters.length, "개 처리됨");
+      }
+    };
 
-      const processBatch = () => {
-        const endIndex = Math.min(currentIndex + batchSize, realShelters.length);
-        
-        for (let i = currentIndex; i < endIndex; i++) {
-          const shelter = realShelters[i];
-          const distance = calculateDistance(
-            userLocation.lat, userLocation.lng,
-            shelter.coordinates.lat, shelter.coordinates.lng
-          );
-          
-          processedShelters.push({
-            ...shelter,
-            distance: formatDistance(distance),
-            distanceValue: distance
-          });
-        }
-        
-        currentIndex = endIndex;
-        
-        // 부분 업데이트로 사용자가 진행 상황을 볼 수 있게 함
-        if (currentIndex <= realShelters.length) {
-          const sorted = [...processedShelters].sort((a, b) => {
-            // 거리 계산이 안 된 항목들은 맨 뒤로
-            if (!a.distanceValue && !b.distanceValue) return 0;
-            if (!a.distanceValue) return 1;
-            if (!b.distanceValue) return -1;
-            return a.distanceValue - b.distanceValue;
-          });
-          setSheltersWithDistance(sorted);
-        }
-        
-        // 더 처리할 항목이 있으면 다음 배치 예약
-        if (currentIndex < realShelters.length) {
-          requestAnimationFrame(processBatch);
-        } else {
-          console.log("✅ 거리 계산 완료. 총", realShelters.length, "개 처리됨");
-        }
-      };
-
-      // 첫 번째 배치 시작
-      processBatch();
-    }
+    // 첫 번째 배치 시작
+    processBatch();
+    
+    // Cleanup function
+    return () => {
+      cancelled = true;
+    };
   }, [userLocation]);
 
   // 길찾기 실행 후 enableRouting 리셋
