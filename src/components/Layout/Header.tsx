@@ -1,12 +1,21 @@
 'use client'
 
-import { MapPin, Menu, User, X } from "lucide-react";
+import { MapPin, Menu, User, LogIn, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 /**
  * 오량쉼터 헤더 컴포넌트
@@ -16,6 +25,7 @@ import { useState } from "react";
 const Header = () => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const { isLoggedIn, user, logout, isLoading } = useAuth();
 
   const navigation = [
     { href: "/", label: "홈", active: pathname === "/" },
@@ -51,9 +61,44 @@ const Header = () => {
             ))}
             
             {/* 사용자 메뉴 */}
-            <Button variant="ghost" size="sm" className="ml-2">
-              <User className="w-4 h-4" />
-            </Button>
+            {isLoading ? (
+              <Button variant="ghost" size="sm" className="ml-2" disabled>
+                <User className="w-4 h-4" />
+              </Button>
+            ) : isLoggedIn && user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="ml-2 flex items-center space-x-2">
+                    <Avatar className="w-6 h-6">
+                      <AvatarFallback className="text-xs">
+                        {user.name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="hidden lg:inline text-sm">{user.name}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link href="/mypage" className="flex items-center space-x-2">
+                      <User className="w-4 h-4" />
+                      <span>마이페이지</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout} className="flex items-center space-x-2 text-red-600">
+                    <LogOut className="w-4 h-4" />
+                    <span>로그아웃</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button variant="ghost" size="sm" className="ml-2" asChild>
+                <Link href="/login" className="flex items-center space-x-2">
+                  <LogIn className="w-4 h-4" />
+                  <span className="hidden lg:inline">로그인</span>
+                </Link>
+              </Button>
+            )}
           </nav>
 
           {/* 모바일 메뉴 버튼 */}
@@ -94,10 +139,77 @@ const Header = () => {
 
                   {/* 모바일 사용자 메뉴 */}
                   <div className="pt-4 border-t">
-                    <Button variant="ghost" size="lg" className="w-full justify-start">
-                      <User className="w-4 h-4 mr-2" />
-                      사용자 메뉴
-                    </Button>
+                    {isLoading ? (
+                      <Button variant="ghost" size="lg" className="w-full justify-start" disabled>
+                        <User className="w-4 h-4 mr-2" />
+                        로딩 중...
+                      </Button>
+                    ) : isLoggedIn && user ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
+                          <Avatar className="w-10 h-10">
+                            <AvatarFallback>
+                              {user.name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{user.name}</div>
+                            <div className="text-sm text-muted-foreground">@{user.username}</div>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="lg" 
+                          className="w-full justify-start"
+                          asChild
+                          onClick={() => setIsOpen(false)}
+                        >
+                          <Link href="/mypage">
+                            <User className="w-4 h-4 mr-2" />
+                            마이페이지
+                          </Link>
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="lg" 
+                          className="w-full justify-start text-red-600"
+                          onClick={() => {
+                            logout();
+                            setIsOpen(false);
+                          }}
+                        >
+                          <LogOut className="w-4 h-4 mr-2" />
+                          로그아웃
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Button 
+                          variant="ghost" 
+                          size="lg" 
+                          className="w-full justify-start"
+                          asChild
+                          onClick={() => setIsOpen(false)}
+                        >
+                          <Link href="/login">
+                            <LogIn className="w-4 h-4 mr-2" />
+                            로그인
+                          </Link>
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="lg" 
+                          className="w-full justify-start"
+                          asChild
+                          onClick={() => setIsOpen(false)}
+                        >
+                          <Link href="/signup">
+                            <User className="w-4 h-4 mr-2" />
+                            회원가입
+                          </Link>
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </SheetContent>

@@ -2,10 +2,14 @@ import { MapPin, Clock, Wifi, Bath, Bed, Heart, Navigation, Users } from "lucide
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/components/ui/use-toast";
 import { CrowdingLevel, CROWDING_LEVELS } from "@/types/crowding";
 import { crowdingManager } from "@/utils/crowdingManager";
+import { favoriteManager } from "@/utils/favoriteManager";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 /**
  * 운영시간과 현재 운영 상태를 확인하는 헬퍼 함수
@@ -129,8 +133,11 @@ interface ShelterCardProps {
  * 쉼터 목록과 추천에서 사용됩니다
  */
 const ShelterCard = ({ shelter, showMap = false, onClick }: ShelterCardProps) => {
+  const { isLoggedIn } = useAuth();
+  const router = useRouter();
   const [crowdingLevel, setCrowdingLevel] = useState<CrowdingLevel>("여유");
   const [hourlyClicks, setHourlyClicks] = useState(0);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   // 운영 상태 계산 (useMemo로 최적화)
   const operatingStatus = useMemo(() => getOperatingStatus(shelter.weekendOperation, shelter.reverseSchedule), [shelter.weekendOperation, shelter.reverseSchedule]);
@@ -141,6 +148,39 @@ const ShelterCard = ({ shelter, showMap = false, onClick }: ShelterCardProps) =>
     setCrowdingLevel(crowdingData.level);
     setHourlyClicks(crowdingData.hourlyClicks);
   }, [shelter.id, shelter.capacity]);
+
+  // 즐겨찾기 상태 로드
+  useEffect(() => {
+    setIsFavorite(favoriteManager.isFavorite(shelter.id));
+  }, [shelter.id]);
+
+  // 즐겨찾기 토글 핸들러
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // 카드 클릭 이벤트 방지
+    
+    if (!isLoggedIn) {
+      toast({
+        title: "로그인이 필요합니다",
+        description: "즐겨찾기 기능을 사용하려면 로그인해주세요.",
+        action: (
+          <Button variant="outline" size="sm" onClick={() => router.push('/login')}>
+            로그인하기
+          </Button>
+        ),
+      });
+      return;
+    }
+
+    const newFavoriteStatus = favoriteManager.toggleFavorite(shelter.id);
+    setIsFavorite(newFavoriteStatus);
+    
+    toast({
+      title: newFavoriteStatus ? "즐겨찾기 추가" : "즐겨찾기 제거",
+      description: newFavoriteStatus 
+        ? `${shelter.name}이(가) 즐겨찾기에 추가되었습니다.`
+        : `${shelter.name}이(가) 즐겨찾기에서 제거되었습니다.`,
+    });
+  };
 
   // 카드 클릭 핸들러
   const handleCardClick = () => {
@@ -168,10 +208,26 @@ const ShelterCard = ({ shelter, showMap = false, onClick }: ShelterCardProps) =>
 
   return (
     <Card 
-      className={`hover:shadow-lg transition-all duration-300 border-l-4 border-l-primary ${onClick ? 'cursor-pointer' : ''}`}
+      className={`hover:shadow-lg transition-all duration-300 border-l-4 border-l-primary ${onClick ? 'cursor-pointer' : ''} relative`}
       onClick={handleCardClick}
     >
-      <CardHeader className="pb-3">
+      {/* 즐겨찾기 버튼 */}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="absolute top-2 right-2 z-10 p-1 h-8 w-8 hover:bg-background/80"
+        onClick={handleFavoriteClick}
+      >
+        <Heart 
+          className={`w-4 h-4 transition-colors ${
+            isFavorite 
+              ? 'text-red-500 fill-current' 
+              : 'text-muted-foreground hover:text-red-500'
+          }`} 
+        />
+      </Button>
+
+      <CardHeader className="pb-3 pr-12">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <CardTitle className="text-lg font-semibold text-foreground mb-1 truncate">
