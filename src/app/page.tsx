@@ -13,7 +13,7 @@ import MapView from "@/components/Map/MapView";
 import { realShelters } from "@/data/realShelters";
 import { crowdingManager } from "@/utils/crowdingManager";
 import { CrowdingLevel, CROWDING_LEVELS } from "@/types/crowding";
-import useShelterFilters from "@/hooks/use-shelter-filters";
+import useShelterFilters, { FilterOptions } from "@/hooks/use-shelter-filters";
 import type { Shelter } from "@/components/Shelter/ShelterCard";
 
 // 거리 정보가 추가된 쉼터 타입

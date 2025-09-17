@@ -1,8 +1,22 @@
 import { useMemo, useState } from 'react';
 import type { Shelter } from '@/components/Shelter/ShelterCard';
-import type { FilterOptions } from '@/components/Search/ShelterFilters';
 
-export const useShelterFilters = (shelters: Shelter[]) => {
+export interface FilterOptions {
+  sido?: string;
+  sigungu?: string;
+  emdong?: string;
+  facilityType?: string;
+  facilitySubType?: string;
+  nightOperation?: boolean;
+  weekendOperation?: boolean;
+  accommodationAvailable?: boolean;
+  searchKeyword?: string;
+  capacityRange?: string;
+  facilityArea?: string;
+  coolingFacilities?: string;
+}
+
+const useShelterFilters = (shelters: Shelter[]) => {
   const [filters, setFilters] = useState<FilterOptions>({});
 
   const filteredShelters = useMemo(() => {
@@ -144,4 +158,5 @@ export const useShelterFilters = (shelters: Shelter[]) => {
   };
 };
 
+export { useShelterFilters };
 export default useShelterFilters;

@@ -196,7 +196,7 @@ const ShelterDetailPage = () => {
         {/* 경로 표시 */}
         <div className="flex items-center space-x-2 mb-6">
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/shelters" className="flex items-center space-x-1">
+            <Link href="/" className="flex items-center space-x-1">
               <ArrowLeft className="w-4 h-4" />
               <span className="hidden sm:inline">지도로 돌아가기</span>
               <span className="sm:hidden">뒤로</span>
